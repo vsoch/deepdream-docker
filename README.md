@@ -24,6 +24,7 @@ docker run \
 -p 8888:8888 \
 -v /host/path/to/data:/data \
 kennydo/deepdream-docker \
+sudo \
 jupyter \
 notebook \
 --port 8888 \
