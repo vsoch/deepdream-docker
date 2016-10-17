@@ -16,15 +16,19 @@ WORKDIR /caffe
 RUN cp Makefile.config.example Makefile.config
 RUN easy_install --upgrade pip
 
+
 # Enable CPU-only + openblas (faster than atlas)
 RUN sed -i 's/# CPU_ONLY/CPU_ONLY/g' Makefile.config
 RUN sed -i 's/BLAS := atlas/BLAS := open/g' Makefile.config
 
+
 # Caffe's Python dependencies...
 RUN pip install -r python/requirements.txt
+RUN pip install jupyter
 RUN make all
 RUN make pycaffe
 ENV PYTHONPATH=/caffe/python
+
 
 # Download model
 RUN scripts/download_model_binary.py models/bvlc_googlenet
@@ -34,6 +38,3 @@ VOLUME ["/data"]
 
 
 WORKDIR /
-ADD deepdream.py /deepdream.py
-
-CMD ["python", "-u", "deepdream.py"]
