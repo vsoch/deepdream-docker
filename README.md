@@ -11,20 +11,25 @@ The only dependency you need is [Docker](https://www.docker.com/).
 ## Building locally
 
 ```
-docker build -t herval/deepdream .
+docker build -t kennydo/deepdream-docker .
 ```
 
 
 ## Running
 
 ```
-docker run -i -t -e INPUT=your_file.png -e ITER=20 -e SCALE=0.10 -e MODEL='inception_3b/5x5_reduce' -v /path/to/your/folder:/data herval/deepdream
+docker run \
+--rm \
+-it \
+-p 8888:8888 \
+-v /host/path/to/data:/data \
+kennydo/deepdream-docker \
+jupyter \
+notebook \
+--port 8888 \
+--ip 0.0.0.0 \
+--no-browser
 ```
-
-Replace  `/path/to/your/folder` to the folder where your `INPUT` file is. That's also where the output will be written to.
-
 
 *Note*: Depending on how much memory your machine has, you might run into problems with high-res images. In my case, processing failed for a 12mp image. Either stick to smaller images or buy more RAM ;-)
 
-
-The output of the script will be written to the `output/` subfolder. Enjoy!
