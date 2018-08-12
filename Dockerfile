@@ -9,8 +9,8 @@ LABEL MAINTAINER vsochat@stanford.edu
 RUN apt-get update && apt-get install -y wget unzip
 
 ADD . /deepdream/caffe/scripts
-ADD ./osart.py /osart.py
-ADD ./run_osart.sh /run_osart.sh
+ADD ./deepdream.py /deepdream.py
+ADD ./run.sh /run.sh
 WORKDIR /deepdream/caffe/models
 
 # Environment variables for deepdream
@@ -30,7 +30,7 @@ RUN ln /dev/null /dev/raw1394
 
 # Additional updates to pip
 RUN pip install ptpython && \
-    mkdir -p data/output data/input
+    mkdir -p data/outputs data/inputs
 
 WORKDIR /deepdream
-ENTRYPOINT ["/bin/bash", "/run_osart.sh"]
+ENTRYPOINT ["/bin/bash", "/run.sh"]

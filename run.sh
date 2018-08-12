@@ -16,4 +16,4 @@ export DEEPDREAM_INPUT="${1}"
 echo "Images Directory: ${DEEPDREAM_IMAGES}";
 echo "Output Directory: ${DEEPDREAM_OUTPUT}":
 
-python ${HERE}/osart.py
+python ${HERE}/deepdream.py
