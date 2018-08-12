@@ -56,10 +56,10 @@ data/outputs/
 So, for example, to run over an entire directory of input images, just do this:
 
 ```bash
-for image in $(ls data/inputs)
+for image in $(ls data/inputs/circle*)
     do
     echo "Processing $image"
-    docker run -v $PWD/data:/data vanessa/deepdream /data/inputs/$image
+    docker run -v $PWD/data:/data vanessa/deepdream /$image
 done
 ```
 
