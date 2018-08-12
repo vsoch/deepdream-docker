@@ -11,7 +11,8 @@ that is derived from:
 The container has been modified to generate a few deep dream images from an input 
 image (and other environment variables) with the intended purpose of producing
 "Open Source Art," or community contributions of images that have
-deepdreams generated in continuous integration. 
+deepdreams generated in [continuous integration](https://github.com/vsoch/opensource-art/blob/master/.circleci/config.yml).  
+See more [examples](data/examples) in the examples folder. 
 
 ## Installing
 
