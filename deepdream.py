@@ -39,18 +39,16 @@ def get_envar(name, default=None):
 
     return value
 
-# Write temporary prototxt
 tmpdir = tempfile.mkdtemp()
-
-frame_dir = '%s/frames' % tmpdir
-if not os.path.exists(frame_dir):
-    os.mkdir(frame_dir)
-
 models_dir = get_envar('DEEPDREAM_MODELS')
 image_dir = os.environ.get('DEEPDREAM_IMAGES')
 image_output = os.environ.get('DEEPDREAM_OUTPUT', tmpdir)
 image_input = os.environ.get('DEEPDREAM_INPUT', 
                              '/deepdream/deepdream/sky1024px.jpg')
+
+if not os.path.exists(image_output):
+    os.mkdir(image_output)
+
 
 # -- Choose Model
 
@@ -75,7 +73,7 @@ def find_model(models_dir, model_name=None):
         if model_name is None:
             model_name = random.choice(models)
 
-        model_path = os.path.join(models_dir, model_name)
+        model_path = os.path.join(models_dir,'models', model_name)
 
         # 2. Look (guess) for required files - this should be tested
         # for contributing a model to the repository
@@ -164,8 +162,8 @@ def make_step(net,
         src.data[:] = np.clip(src.data, -bias, 255-bias)  
 
 def deepdream(net, base_img, iter_n=10, octave_n=4, octave_scale=1.4, 
-              end='inception_4c/output', clip=True, frame_dir=None,
-              save_image=False, **step_params):
+              end='inception_4c/output', clip=True, image_output=None,
+              save_image=None, **step_params):
 
     # prepare base images for all octaves
     octaves = [preprocess(net, base_img)]
@@ -192,14 +190,15 @@ def deepdream(net, base_img, iter_n=10, octave_n=4, octave_scale=1.4,
             # visualization
             vis = deprocess(net, src.data[0])
 
-            # save last image?
-            if save_image is True and frame_dir is not None and i==iter_n-1:
-                image_file = "%s/%s_%s.jpg" % (frame_dir, end, i)
+            # save last image (this could be modified to save sequence or other)
+            if save_image is not None and image_output is not None and i==iter_n-1:
+                image_file = "%s/%s_%s-%s" % (image_output, end, i, save_image)
 
                 # The keys have directory / in them, may need to mkdir
                 image_dir = os.path.dirname(image_file)
                 if not os.path.exists(image_dir):
-                    os.mkdir(image_dir)
+                    # not entirely safe way to do it, but ok for now
+                    os.makedirs(image_dir)
 
                 PIL.Image.fromarray(np.uint8(vis)).save(image_file)
 
@@ -217,12 +216,13 @@ def deepdream(net, base_img, iter_n=10, octave_n=4, octave_scale=1.4,
 
 # --- Dream!
 
+input_name = os.path.basename(image_input)
 img = np.float32(PIL.Image.open(image_input))
 deepdream(net, img, 
-          save_image=True,
-          frame_dir=frame_dir)
+          save_image=input_name,
+          image_output=image_output)
 
-PIL.Image.fromarray(np.uint8(img)).save("%s/original.jpg" % frame_dir)
+PIL.Image.fromarray(np.uint8(img)).save("%s/original-%s" % (image_output, input_name))
 
 # TODO: net.blobs.keys() we can change layer selection to alter the result! 
 
@@ -233,7 +233,7 @@ h, w = frame.shape[:2]
 s = 0.2 # scale coefficient
 for i in xrange(3):
     frame = deepdream(net, frame)
-    PIL.Image.fromarray(np.uint8(frame)).save("%s/inception_4c/frame-%04d.jpg"% (frame_dir, frame_i))
+    PIL.Image.fromarray(np.uint8(frame)).save("%s/inception_4c/frame-%04d-%s" % (image_output, frame_i, input_name))
     frame = nd.affine_transform(frame, [1-s,1-s,1], [h*s/2,w*s/2,0], order=1)
     frame_i += 1
 

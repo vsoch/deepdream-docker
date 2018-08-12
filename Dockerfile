@@ -29,7 +29,8 @@ RUN cd /deepdream/caffe/models && \
 RUN ln /dev/null /dev/raw1394
 
 # Additional updates to pip
-RUN pip install ptpython && \
+RUN pip install --upgrade pip && \
+    pip install ptpython && \
     mkdir -p data/outputs data/inputs
 
 WORKDIR /deepdream

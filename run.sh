@@ -16,4 +16,5 @@ export DEEPDREAM_INPUT="${1}"
 echo "Images Directory: ${DEEPDREAM_IMAGES}";
 echo "Output Directory: ${DEEPDREAM_OUTPUT}":
 
+sleep 2
 python ${HERE}/deepdream.py
