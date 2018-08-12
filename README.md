@@ -1,19 +1,24 @@
 # Google Deepdream + Docker
 
-A Docker Container to run Google's [Deepdream](https://github.com/google/deepdream/). This avoids having to setup all the dependencies (including GPU drivers, Python, Caffe, etc) in your OS of choice, so you can skip right to the fun part!
+A Docker Container to run Google's [Deepdream](https://github.com/google/deepdream/), modified from
+the fantastic [kennydo](https://github.com/kennydo/deepdream-docker)!  The container
+has been modified to serve functions to choose N images from a folder, and then
+to take in some N images to run through the algorithm (and generate a new image). Specifically
+we want to:
 
+ 1. Have a command to randomly select images
+ 2. Do preprocessing of those images to conform to some size
+ 3. Generate a new image with the N images
 
 ## Installing
 
 The only dependency you need is [Docker](https://www.docker.com/).
 
-
 ## Building locally
 
 ```
-docker build -t kennydo/deepdream-docker .
+docker build -t vanessa/deepdream .
 ```
-
 
 ## Running
 
@@ -23,7 +28,7 @@ docker run \
 -it \
 -p 8888:8888 \
 -v /host/path/to/data:/data \
-kennydo/deepdream-docker \
+vanessa/deepdream-docker \
 sudo \
 jupyter \
 notebook \

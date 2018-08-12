@@ -1,40 +1,36 @@
-FROM ubuntu:14.04
-MAINTAINER Herval Freire <hervalfreire@gmail.com>
+FROM saturnism/deepdream
 
-# General dependencies, lots of them
-RUN apt-get update && apt-get install -y git
-RUN apt-get install -y libprotobuf-dev libleveldb-dev libsnappy-dev libopencv-dev libhdf5-serial-dev libatlas-dev libzmq3-dev libboost-all-dev libgflags-dev libgoogle-glog-dev liblmdb-dev protobuf-compiler bc libopenblas-dev
+# docker build -t vanessa/deepdream .
+# docker run -it vanessa/deepdream bash
 
+LABEL MAINTAINER vsochat@stanford.edu
 
-# Python + pip
-RUN apt-get install -y python python-dev python-pip python-numpy python-scipy
+# Unzip and wget dependencies
+RUN apt-get update && apt-get install -y wget unzip
 
+ADD . /deepdream/caffe/scripts
+ADD ./osart.py /osart.py
+ADD ./run_osart.sh /run_osart.sh
+WORKDIR /deepdream/caffe/models
 
-# Caffe
-RUN git clone https://github.com/BVLC/caffe.git /caffe
-WORKDIR /caffe
-RUN cp Makefile.config.example Makefile.config
-RUN easy_install --upgrade pip
+# Environment variables for deepdream
+ENV DEEPDREAM_MODELS /deepdream/caffe
+ENV CAFFE_SCRIPTS /deepdream/caffe/scripts
 
+# Download extra models
+# wget https://raw.githubusercontent.com/wiki/BVLC/caffe/Model-Zoo.md -O zoo.md
+# cat zoo.md | grep -o -P '(?<=gist[.]github[.]com).*(?=[)])' # (gets most)
+RUN cd /deepdream/caffe/models && \
+    echo "Downloading extra models..." && \
+    chmod u+x ${CAFFE_SCRIPTS}/download_zoo.sh && \
+    /bin/bash ${CAFFE_SCRIPTS}/download_zoo.sh ${PWD}
 
-# Enable CPU-only + openblas (faster than atlas)
-RUN sed -i 's/# CPU_ONLY/CPU_ONLY/g' Makefile.config
-RUN sed -i 's/BLAS := atlas/BLAS := open/g' Makefile.config
+# disable opencv camera driver
+RUN ln /dev/null /dev/raw1394
 
+# Additional updates to pip
+RUN pip install ptpython && \
+    mkdir -p data/output data/input
 
-# Caffe's Python dependencies...
-RUN pip install -r python/requirements.txt
-RUN pip install jupyter
-RUN make all
-RUN make pycaffe
-ENV PYTHONPATH=/caffe/python
-
-
-# Download model
-RUN scripts/download_model_binary.py models/bvlc_googlenet
-
-
-VOLUME ["/data"]
-
-
-WORKDIR /
+WORKDIR /deepdream
+ENTRYPOINT ["/bin/bash", "/run_osart.sh"]
