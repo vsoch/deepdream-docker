@@ -58,7 +58,7 @@ So, for example, to run over an entire directory of input images, just do this:
 for image in $(ls data/inputs)
     do
     echo "Processing $image"
-    docker run -v $PWD/data:/data vanessa/dd /data/inputs/$image
+    docker run -v $PWD/data:/data vanessa/deepdream /data/inputs/$image
 done
 ```
 
