@@ -41,6 +41,8 @@ def get_envar(name, default=None):
 
 tmpdir = tempfile.mkdtemp()
 models_dir = get_envar('DEEPDREAM_MODELS')
+frames = int(os.environ.get('DEEPDREAM_FRAMES', 5))
+s = float(os.environ.get('DEEPDREAM_SCALE_COEFF', 0.25)) # scale coefficient
 image_dir = os.environ.get('DEEPDREAM_IMAGES')
 image_output = os.environ.get('DEEPDREAM_OUTPUT', tmpdir)
 image_input = os.environ.get('DEEPDREAM_INPUT', 
@@ -218,11 +220,9 @@ def deepdream(net, base_img, iter_n=10, octave_n=4, octave_scale=1.4,
 
 input_name = os.path.basename(image_input)
 img = np.float32(PIL.Image.open(image_input))
-deepdream(net, img, 
-          save_image=input_name,
-          image_output=image_output)
+dreamy = deepdream(net, img)
 
-PIL.Image.fromarray(np.uint8(img)).save("%s/original-%s" % (image_output, input_name))
+PIL.Image.fromarray(np.uint8(dreamy)).save("%s/dreamy-%s" % (image_output, input_name))
 
 # TODO: net.blobs.keys() we can change layer selection to alter the result! 
 
@@ -230,8 +230,7 @@ frame = img
 frame_i = 0
 
 h, w = frame.shape[:2]
-s = 0.2 # scale coefficient
-for i in xrange(3):
+for i in xrange(frames):
     frame = deepdream(net, frame)
     PIL.Image.fromarray(np.uint8(frame)).save("%s/inception_4c/frame-%04d-%s" % (image_output, frame_i, input_name))
     frame = nd.affine_transform(frame, [1-s,1-s,1], [h*s/2,w*s/2,0], order=1)

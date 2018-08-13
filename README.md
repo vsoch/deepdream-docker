@@ -18,18 +18,21 @@ See more [examples](data/examples) in the examples folder.
 
 The only dependency you need is [Docker](https://www.docker.com/).
 
-## Building locally
+## Usage
+
+> How do I build the container?
 
 ```
 docker build -t vanessa/deepdream .
 ```
 
-## Usage
+> How do I run the container?
 
 Generally, you should have some folder with images (inputs and outputs) that you will bind to the container,
 and then run it. We have provided an example [data](data) folder to get you started. Notice that it has two
 subfolders, `inputs` and `outputs` that are expected by the container. The input image provided
 as a variable is also relative to _inside the container_.
+
 
 ```bash
 docker run -v $PWD/data:/data vanessa/deepdream /data/inputs/tim-holman-circle-packing.jpg
@@ -51,6 +54,12 @@ data/outputs/
 │   └── output_9.jpg
 └── original.jpg  
 ```
+
+> What parameters can I change?
+
+The parameters are controlled via environment variables that start with `DEEPDREAM_*`
+Some are provided by default from the container, others are set in run.sh (also in the container,
+and changeable if you set them at runtime). See the [run.sh](run.sh) file for a summary.
 
 ## More Examples
 So, for example, to run over an entire directory of input images, just do this:

@@ -14,6 +14,7 @@ ADD ./run.sh /run.sh
 WORKDIR /deepdream/caffe/models
 
 # Environment variables for deepdream
+ENV DEEPDREAM_OUTPUT /data/outputs
 ENV DEEPDREAM_MODELS /deepdream/caffe
 ENV CAFFE_SCRIPTS /deepdream/caffe/scripts
 
