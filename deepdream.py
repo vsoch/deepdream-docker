@@ -38,13 +38,14 @@ def get_envar(name, default=None):
         sys.exit(1)
 
     return value
-
+    
 tmpdir = tempfile.mkdtemp()
 models_dir = get_envar('DEEPDREAM_MODELS')
 frames = int(os.environ.get('DEEPDREAM_FRAMES', 5))
 s = float(os.environ.get('DEEPDREAM_SCALE_COEFF', 0.25)) # scale coefficient
 image_dir = os.environ.get('DEEPDREAM_IMAGES')
 image_output = os.environ.get('DEEPDREAM_OUTPUT', tmpdir)
+
 image_input = os.environ.get('DEEPDREAM_INPUT', 
                              '/deepdream/deepdream/sky1024px.jpg')
 
@@ -94,7 +95,6 @@ def find_model(models_dir, model_name=None):
             return lookup
 
 lookup = find_model(models_dir, 'bvlc_googlenet')
-
 
 # -- Loading DNN Model
 
@@ -232,7 +232,7 @@ frame_i = 0
 h, w = frame.shape[:2]
 for i in xrange(frames):
     frame = deepdream(net, frame)
-    PIL.Image.fromarray(np.uint8(frame)).save("%s/inception_4c/frame-%04d-%s" % (image_output, frame_i, input_name))
+    PIL.Image.fromarray(np.uint8(frame)).save("%s/frame-%04d-%s" % (image_output, frame_i, input_name))
     frame = nd.affine_transform(frame, [1-s,1-s,1], [h*s/2,w*s/2,0], order=1)
     frame_i += 1
 
