@@ -261,8 +261,13 @@ def main():
         os.makedirs(image_output)
 
     if not os.path.exists(image_input):
-        print('Cannot find %s.' % image_input)
-        sys.exit(1)
+
+        # Second try - user mounted to data, but image is in $PWD
+        image_input = "/data/%s" % image_input
+
+        if not os.path.exists(image_input):
+            print('Cannot find %s.' % image_input)
+            sys.exit(1)
 
     lookup = find_model(models_dir, 'bvlc_googlenet')
 

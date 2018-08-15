@@ -13,6 +13,7 @@ HERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
 export DEEPDREAM_IMAGES=/data/inputs
 export DEEPDREAM_OUTPUT=/data/outputs
+mkdir -p /data/inputs /data/outputs
 
 echo "Images Directory: ${DEEPDREAM_IMAGES}"
 echo "Output Directory: ${DEEPDREAM_OUTPUT}"
