@@ -26,16 +26,51 @@ The only dependency you need is [Docker](https://www.docker.com/).
 docker build -t vanessa/deepdream .
 ```
 
+Optionally, you can add a version:
+
+```
+docker build -t vanessa/deepdream:0.0.8 .
+```
+
 > How do I run the container?
 
 Generally, you should have some folder with images (inputs and outputs) that you will bind to the container,
 and then run it. We have provided an example [data](data) folder to get you started. Notice that it has two
 subfolders, `inputs` and `outputs` that are expected by the container. The input image provided
-as a variable is also relative to _inside the container_.
+as a variable is also relative to _inside the container_. You can either specify input arguments (see below)
+or environment variables for inputs.
 
+
+### Command Line
 
 ```bash
-docker run -v $PWD/data:/data vanessa/deepdream /data/inputs/tim-holman-circle-packing.jpg
+docker run vanessa/deepdream:0.0.8 --help
+...
+usage: deepdream.py [-h] [--input INPUT] [--guide GUIDE]
+                    [--models_dir MODELS_DIR] [--output_dir IMAGE_OUTPUT]
+                    [--input_dir IMAGE_DIR] [--frames FRAMES]
+                    [--scale-coeff S]
+
+DeepDream OpenSource Art
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --input INPUT         image to run deepdream on, recommended < 1024px
+  --guide GUIDE         second image to guide style of first < 1024px
+  --models_dir MODELS_DIR
+                        directory with modules (extracted gist zip) folders
+  --output_dir IMAGE_OUTPUT
+                        directory to write dreams
+  --input_dir IMAGE_DIR
+                        directory to write dreams
+  --frames FRAMES       number of frames to iterate through in dream
+  --scale-coeff S       scale coefficient for each frame
+```
+
+For example:
+
+```bash
+docker run -v $PWD/data:/data vanessa/deepdream --input /data/inputs/tim-holman-circle-packing.jpg
 ...
 <IPython.core.display.Image object>
 (3, 9, 'inception_4c/output', (320, 320, 3))
@@ -55,6 +90,20 @@ data/outputs/
 └── original.jpg  
 ```
 
+> Can I combine two images?
+
+Yes! You can provide a second image as a "guide"
+
+```bash
+docker run -v $PWD/data:/data vanessa/deepdream --input /data/inputs/tim-holman-circle-packing.jpg --guide /data/inputs/natacha-sochat-goldie.jpg
+```
+
+In all cases, it's recommended to start with smaller images, see the result, and work your way up.
+
+### Environment Variables
+See the [deepdreams.py](deepdreams.py) and [run.sh](run.sh) and [Dockerfile](Dockerfile)
+for arguments you can set, if this is your preference.
+
 > What parameters can I change?
 
 The parameters are controlled via environment variables that start with `DEEPDREAM_*`
@@ -68,7 +117,7 @@ So, for example, to run over an entire directory of input images, just do this:
 for image in $(ls data/inputs/circle*)
     do
     echo "Processing $image"
-    docker run -v $PWD/data:/data vanessa/deepdream /$image
+    docker run -v $PWD/data:/data vanessa/deepdream --input /$image
 done
 ```
 

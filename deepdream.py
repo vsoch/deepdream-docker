@@ -14,11 +14,48 @@ import PIL.Image
 from IPython.display import clear_output, Image, display
 from google.protobuf import text_format
 
+import argparse
 import caffe
+import shutil
 import os
+import sys
 import random
 import tempfile
 
+
+# -- Argument Parsing
+def get_parser():
+    parser = argparse.ArgumentParser(description="DeepDream OpenSource Art")
+
+    parser.add_argument('--input', dest="input", 
+                        help="image to run deepdream on, recommended < 1024px", 
+                        default=None, type=str)
+
+    parser.add_argument('--guide', dest="guide", 
+                        help="second image to guide style of first < 1024px", 
+                        default=None, type=str)
+
+    parser.add_argument('--models_dir', dest="models_dir", 
+                        help="directory with modules (extracted gist zip) folders", 
+                        default='', type=str)
+
+    parser.add_argument('--output_dir', dest="image_output", 
+                        help="directory to write dreams", 
+                        default='', type=str)
+
+    parser.add_argument('--input_dir', dest="image_dir", 
+                        help="directory to write dreams", 
+                        default='', type=str)
+
+    parser.add_argument('--frames', dest="frames", 
+                        help="number of frames to iterate through in dream", 
+                        default=5, type=int)
+
+    parser.add_argument('--scale-coeff', dest="s", 
+                        help="scale coefficient for each frame", 
+                        default=0.25, type=float)
+
+    return parser
 
 # -- Environment Variables
 
@@ -39,20 +76,6 @@ def get_envar(name, default=None):
 
     return value
     
-tmpdir = tempfile.mkdtemp()
-models_dir = get_envar('DEEPDREAM_MODELS')
-frames = int(os.environ.get('DEEPDREAM_FRAMES', 5))
-s = float(os.environ.get('DEEPDREAM_SCALE_COEFF', 0.25)) # scale coefficient
-image_dir = os.environ.get('DEEPDREAM_IMAGES')
-image_output = os.environ.get('DEEPDREAM_OUTPUT', tmpdir)
-
-image_input = os.environ.get('DEEPDREAM_INPUT', 
-                             '/deepdream/deepdream/sky1024px.jpg')
-
-if not os.path.exists(image_output):
-    os.mkdir(image_output)
-
-
 # -- Choose Model
 
 def find_model(models_dir, model_name=None):
@@ -93,23 +116,6 @@ def find_model(models_dir, model_name=None):
             if len(params) > 0:
                 lookup['param_fn'] = os.path.join(model_path, params[0])
             return lookup
-
-lookup = find_model(models_dir, 'bvlc_googlenet')
-
-# -- Loading DNN Model
-
-# Patching model to be able to compute gradients.
-# Note that you can also manually add "force_backward: true" line to "deploy.prototxt".
-model = caffe.io.caffe_pb2.NetParameter()
-text_format.Merge(open(lookup['net_fn']).read(), model)
-model.force_backward = True
-
-tmp_proto = '%s/tmp.prototxt' % tmpdir
-open(tmp_proto, 'w').write(str(model))
-
-net = caffe.Classifier(tmp_proto, lookup['param_fn'],
-                       mean = np.float32([104.0, 116.0, 122.0]), # ImageNet mean, training set dependent
-                       channel_swap = (2,1,0)) # the reference model has channels in BGR order instead of RGB
 
 # a couple of utility functions for converting to and from Caffe's input image layout
 def preprocess(net, img):
@@ -162,6 +168,7 @@ def make_step(net,
     if clip:
         bias = net.transformer.mean['data']
         src.data[:] = np.clip(src.data, -bias, 255-bias)  
+
 
 def deepdream(net, base_img, iter_n=10, octave_n=4, octave_scale=1.4, 
               end='inception_4c/output', clip=True, image_output=None,
@@ -216,25 +223,104 @@ def deepdream(net, base_img, iter_n=10, octave_n=4, octave_scale=1.4,
     # returning the resulting image
     return deprocess(net, src.data[0])
 
-# --- Dream!
+def objective_guide(dst):
+    x = dst.data[0].copy()
+    y = dst.data[0].copy()
+    ch = x.shape[0]
+    x = x.reshape(ch,-1)
+    y = y.reshape(ch,-1)
+    A = x.T.dot(y) # compute the matrix of dot-products with guide features
+    dst.diff[0].reshape(ch,-1)[:] = y[:,A.argmax(1)] # select ones that match best
 
-input_name = os.path.basename(image_input)
-img = np.float32(PIL.Image.open(image_input))
-dreamy = deepdream(net, img)
+def main():
 
-PIL.Image.fromarray(np.uint8(dreamy)).save("%s/dreamy-%s" % (image_output, input_name))
+    parser = get_parser()
 
-# TODO: net.blobs.keys() we can change layer selection to alter the result! 
+    def help(return_code=0):
+        parser.print_help()
+        sys.exit(return_code)
+    
+    # If the user didn't provide any arguments, show the full help
+    try:
+        args = parser.parse_args()
+    except:
+        sys.exit(0)
 
-frame = img
-frame_i = 0
+    tmpdir = tempfile.mkdtemp()
+    models_dir = get_envar('DEEPDREAM_MODELS', args.models_dir)
+    frames = int(os.environ.get('DEEPDREAM_FRAMES', args.frames))
+    s = float(os.environ.get('DEEPDREAM_SCALE_COEFF', args.s)) # scale coefficient
+    image_dir = os.environ.get('DEEPDREAM_IMAGES', args.image_dir)
+    image_output = args.image_output or os.environ.get('DEEPDREAM_OUTPUT', tmpdir)
+    image_input =  os.environ.get('DEEPDREAM_INPUT', args.input) or '/deepdream/deepdream/sky1024px.jpg'
 
-h, w = frame.shape[:2]
-for i in xrange(frames):
-    frame = deepdream(net, frame)
-    PIL.Image.fromarray(np.uint8(frame)).save("%s/frame-%04d-%s" % (image_output, frame_i, input_name))
-    frame = nd.affine_transform(frame, [1-s,1-s,1], [h*s/2,w*s/2,0], order=1)
-    frame_i += 1
 
-print('DeepDreams are made of cheese, who am I to diss a brie?')
-print('output> %s' % image_output)
+    # -- Input Checking
+                        
+    if not os.path.exists(image_output):
+        os.makedirs(image_output)
+
+    if not os.path.exists(image_input):
+        print('Cannot find %s.' % image_input)
+        sys.exit(1)
+
+    lookup = find_model(models_dir, 'bvlc_googlenet')
+
+    # -- Loading DNN Model
+
+    # Patching model to be able to compute gradients.
+    # Note that you can also manually add "force_backward: true" line to "deploy.prototxt".
+    model = caffe.io.caffe_pb2.NetParameter()
+    text_format.Merge(open(lookup['net_fn']).read(), model)
+    model.force_backward = True
+
+    tmp_proto = '%s/tmp.prototxt' % tmpdir
+    open(tmp_proto, 'w').write(str(model))
+
+    net = caffe.Classifier(tmp_proto, lookup['param_fn'],
+                           mean = np.float32([104.0, 116.0, 122.0]), # ImageNet mean, training set dependent
+                           channel_swap = (2,1,0)) # the reference model has channels in BGR order instead of RGB
+
+    # --- Dream!
+
+    input_name = os.path.basename(image_input)
+    img = np.float32(PIL.Image.open(image_input))
+    dreamy = deepdream(net, img)
+
+    PIL.Image.fromarray(np.uint8(dreamy)).save("%s/dreamy-%s" % (image_output, input_name))
+
+    # --- With Guide?
+    if args.guide is not None:
+        guide = np.float32(PIL.Image.open(args.guide))
+        end = 'inception_3b/output'
+        h, w = guide.shape[:2]
+        src, dst = net.blobs['data'], net.blobs[end]
+        src.reshape(1,3,h,w)
+        src.data[0] = preprocess(net, guide)
+        net.forward(end=end)
+        guide_features = dst.data[0].copy()
+        guided = deepdream(net, img, end=end, objective=objective_guide)
+        PIL.Image.fromarray(np.uint8(guided)).save("%s/guided-%s" % (image_output, input_name))
+        img = guided
+
+    # TODO: net.blobs.keys() we can change layer selection to alter the result! 
+
+    frame = img
+    frame_i = 0
+
+    h, w = frame.shape[:2]
+    for i in xrange(frames):
+        frame = deepdream(net, frame)
+        PIL.Image.fromarray(np.uint8(frame)).save("%s/frame-%04d-%s" % (image_output, frame_i, input_name))
+        frame = nd.affine_transform(frame, [1-s,1-s,1], [h*s/2,w*s/2,0], order=1)
+        frame_i += 1
+
+    print('DeepDreams are made of cheese, who am I to diss a brie?')
+    print('output> %s' % image_output)
+
+    # Remove temporary parameters, we could keep this if someone wanted
+    shutil.rmtree(tmpdir)
+
+
+if __name__ == '__main__':
+    main()

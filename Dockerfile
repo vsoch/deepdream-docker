@@ -32,7 +32,8 @@ RUN ln /dev/null /dev/raw1394
 # Additional updates to pip
 RUN pip install --upgrade pip && \
     pip install ptpython && \
-    mkdir -p data/outputs data/inputs
+    mkdir -p /data/outputs /data/inputs \
+             data/outputs data/inputs
 
 WORKDIR /deepdream
 ENTRYPOINT ["/bin/bash", "/run.sh"]

@@ -13,11 +13,9 @@ HERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
 export DEEPDREAM_IMAGES=/data/inputs
 export DEEPDREAM_OUTPUT=/data/outputs
-export DEEPDREAM_INPUT="${1}"
 
 echo "Images Directory: ${DEEPDREAM_IMAGES}"
 echo "Output Directory: ${DEEPDREAM_OUTPUT}"
-echo "Image Input: ${DEEPDREAM_INPUT}"
 
 sleep 5
-python ${HERE}/deepdream.py ${DEEPDREAM_INPUT}"
+python ${HERE}/deepdream.py "${@}"
