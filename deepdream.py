@@ -22,6 +22,8 @@ import sys
 import random
 import tempfile
 
+import warnings
+warnings.filterwarnings('ignore', '.*output shape of zoom.*')
 
 # -- Argument Parsing
 def get_parser():
@@ -30,6 +32,10 @@ def get_parser():
     parser.add_argument('--input', dest="input", 
                         help="image to run deepdream on, recommended < 1024px", 
                         default=None, type=str)
+
+    parser.add_argument('--layers', dest='layers', action='store_true',
+                        help='save images of intermediate layers',
+                        default=False)
 
     parser.add_argument('--guide', dest="guide", 
                         help="second image to guide style of first < 1024px", 
@@ -46,6 +52,10 @@ def get_parser():
     parser.add_argument('--input_dir', dest="image_dir", 
                         help="directory to write dreams", 
                         default='', type=str)
+
+    parser.add_argument('--layer_filter', dest="filter", 
+                        help="if saving --layers, filter based on this string", 
+                        default='conv', type=str)
 
     parser.add_argument('--frames', dest="frames", 
                         help="number of frames to iterate through in dream", 
@@ -78,7 +88,7 @@ def get_envar(name, default=None):
     
 # -- Choose Model
 
-def find_model(models_dir, model_name=None):
+def find_model(models_dir, model_name=None, return_all=False):
     '''find_model will look through a list of folders in some parent models
        directory, and check the folder for the prototext files. If both
        are found for a randomly chosen model, it is returned.
@@ -89,33 +99,65 @@ def find_model(models_dir, model_name=None):
     # Save everything to return to user
     lookup = dict()
     
-    models = os.listdir(models_dir)
+    models = os.listdir('%s/models' % models_dir)
     print('Found %s candidate models in %s' %(len(models), models_dir))
     
     # 1. Choose a model
+
+    if return_all:
+        keepers = []
+        for model_name in models:
+            model = select_model(model_name)
+            if model:
+                keepers.append(model)
+        return keepers
+
     while True:
 
         # If the user provided a model, try it first
         if model_name is None:
             model_name = random.choice(models)
 
-        model_path = os.path.join(models_dir,'models', model_name)
+        model = select_model(model_name, models_dir)
+        if model:
+            return model
+        
 
-        # 2. Look (guess) for required files - this should be tested
-        # for contributing a model to the repository
+def select_model(model_name, models_dir):
+    '''determine if a model is selectable based on files provided, otherwise
+       return none
 
+       Note:: this function currently (in the container) only serves to find
+              a specific model that we know to work, as the rest of
+              the script isn't generaiized to read it. Given that the models
+              are downloaded into the container, this would be a great feature
+              so that the model is also randomly selected! See
+              https://github.com/vsoch/deepdream-docker/issues/1
+    '''
+
+    model_path = os.path.join(models_dir, 'models', model_name)
+
+    # 2. Look (guess) for required files - this should be tested
+    # for contributing a model to the repository
+
+    # We need a caffemodel to use it
+    params = [x for x in os.listdir(model_path) if x.endswith('caffemodel')]
+    if len(params) > 0:            
+        lookup = {'model': model_name,
+                  'path': model_path,
+                  'param_fn': os.path.join(model_path, params[0])}  
+
+        # First effort, look for "deploy" prototext
         deploy_files = [x for x in os.listdir(model_path) if 'deploy' in x]
-        if len(deploy_files) > 0:
-            lookup = {'model': model_name,
-                      'path': model_path,
-                      'param_fn': None,
-                      'net_fn': os.path.join(model_path, deploy_files[0])}  
 
-            # Is there already a cached parameters?
-            params = [x for x in os.listdir(model_path) if x.endswith('caffemodel')]
-            if len(params) > 0:
-                lookup['param_fn'] = os.path.join(model_path, params[0])
-            return lookup
+        # Second effort, look for "deploy" prototext
+        if len(deploy_files) > 0:
+            lookup['net_fn'] = os.path.join(model_path, deploy_files[0])
+            if 'bvlc' in model_path:
+                return lookup
+
+    model_name = None
+
 
 # a couple of utility functions for converting to and from Caffe's input image layout
 def preprocess(net, img):
@@ -232,6 +274,19 @@ def objective_guide(dst):
     A = x.T.dot(y) # compute the matrix of dot-products with guide features
     dst.diff[0].reshape(ch,-1)[:] = y[:,A.argmax(1)] # select ones that match best
 
+
+def visualize_layers(net, img, image_output, input_name, layer_filter="conv"):
+    for end,blob in net.blobs.items():
+        if layer_filter in end:
+            try:
+                out = deepdream(net, img, end=end)
+                outname = "%s/layer-%s-%s" % (image_output, end.replace('/','-'), input_name)
+                PIL.Image.fromarray(np.uint8(out)).save(outname)
+            except: # not in list
+                print('Issue with %s, skipping' % end)
+                pass
+
+
 def main():
 
     parser = get_parser()
@@ -269,6 +324,8 @@ def main():
             print('Cannot find %s.' % image_input)
             sys.exit(1)
 
+
+    # Choose random model
     lookup = find_model(models_dir, 'bvlc_googlenet')
 
     # -- Loading DNN Model
@@ -294,6 +351,14 @@ def main():
 
     PIL.Image.fromarray(np.uint8(dreamy)).save("%s/dreamy-%s" % (image_output, input_name))
 
+    # --- Save Layers
+
+    # net.blobs.keys() we can change layer selection to alter the result! 
+
+    if args.layers is True:
+        print('Saving subset of layers to %s' % image_output)
+        visualize_layers(net, img, image_output, input_name, args.filter)
+
     # --- With Guide?
     if args.guide is not None:
         guide = np.float32(PIL.Image.open(args.guide))
@@ -307,8 +372,6 @@ def main():
         guided = deepdream(net, img, end=end, objective=objective_guide)
         PIL.Image.fromarray(np.uint8(guided)).save("%s/guided-%s" % (image_output, input_name))
         img = guided
-
-    # TODO: net.blobs.keys() we can change layer selection to alter the result! 
 
     frame = img
     frame_i = 0

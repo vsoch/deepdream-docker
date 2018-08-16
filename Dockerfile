@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y wget unzip
 
 ADD . /deepdream/caffe/scripts
 ADD ./deepdream.py /deepdream.py
+ADD ./get_dims.py /dims.py
 ADD ./run.sh /run.sh
 WORKDIR /deepdream/caffe/models
 

@@ -44,7 +44,7 @@ or environment variables for inputs.
 ### Command Line
 
 ```bash
-docker run vanessa/deepdream:0.0.8 --help
+docker run vanessa/deepdream:0.0.9 --help
 ...
 usage: deepdream.py [-h] [--input INPUT] [--guide GUIDE]
                     [--models_dir MODELS_DIR] [--output_dir IMAGE_OUTPUT]
@@ -100,6 +100,17 @@ docker run -v $PWD/data:/data vanessa/deepdream --input /data/inputs/tim-holman-
 
 In all cases, it's recommended to start with smaller images, see the result, and work your way up.
 
+> How do I save the layers?
+
+You can add the flag `--layers` to run the algorithm using every layer as a guide. Note that
+for large images this might take a really long time, and it's recommended to do with smaller
+images first!
+
+```bash
+docker run -v $PWD/data:/data vanessa/deepdream --input /data/inputs/tim-holman-circle-packing.jpg --layers
+```
+
+
 ### Environment Variables
 See the [deepdreams.py](deepdreams.py) and [run.sh](run.sh) and [Dockerfile](Dockerfile)
 for arguments you can set, if this is your preference.
@@ -123,3 +134,21 @@ done
 
 For a good example of usage, see the [opensource-art](https://www.github.com/vsoch/opensource-art)
 repository. We will update here when possible!
+
+### Development
+
+If you want to shell into the container to play around (or get it started running and interact with
+it otherwise) it's easy to run, change the entrypoint to be bash, and give it a good name:
+
+```bash
+# nature.jpg is in the present working directory
+$ docker run --name osart -v $PWD:/data -it --entrypoint bash vanessa/deepdream:0.0.9
+root@4dd0ba3a02a5:/deepdream#
+```
+
+Then from the outside, for example, you can test an image in the $PWD like so:
+
+```bash
+docker exec osart python /dims.py --image /data/nature.jpg
+docker exec osart python /dims.py --image /data/nature.jpg --width
+```
