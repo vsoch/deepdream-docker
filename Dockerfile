@@ -33,6 +33,7 @@ RUN ln /dev/null /dev/raw1394
 # Additional updates to pip
 RUN pip install --upgrade pip && \
     pip install ptpython && \
+    pip install 'prompt-toolkit==1.0.15' --force-reinstall && \
     mkdir -p /data/outputs /data/inputs \
              data/outputs data/inputs
 
